@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import numpy as np
 import tensorflow.lite as tflite
 from tensorflow.keras.preprocessing import image
+import os
 
 app = Flask(__name__)
 
@@ -20,13 +21,19 @@ def preprocess_image(img_path):
     img_array = np.expand_dims(img_array, axis=0).astype(np.float32)  # Expand dims & convert
     return img_array
 
+# Home route (renders HTML page)
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+# Prediction API
 @app.route('/predict', methods=['POST'])
 def predict():
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     
     file = request.files['file']
-    file_path = "temp.jpg"
+    file_path = os.path.join("static/uploads", file.filename)
     file.save(file_path)
 
     # Preprocess the image
@@ -40,13 +47,7 @@ def predict():
     # Interpret results
     result = "Pneumonia Detected" if prediction > 0.5 else "Normal"
 
-    return jsonify({"prediction": result, "confidence": float(prediction)})
+    return render_template('index.html', prediction=result, confidence=f"{prediction:.4f}", image_url=file_path)
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
-curl -X POST -F "file=@sample_xray.jpg" http://127.0.0.1:5000/predict
